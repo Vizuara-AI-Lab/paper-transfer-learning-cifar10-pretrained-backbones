@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transfer Learning on CIFAR-10: A Controlled Comparison of ImageNet-Pretrained Backbones</title>
+  <meta name="description" content="A matched-protocol empirical comparison of three ImageNet-pretrained backbones (VGG-16, MobileNetV2, ResNet-18) and a from-scratch CNN on CIFAR-10. ResNet-18 reaches 91.5 ± 0.3% test accuracy, a 13.6 percentage-point improvement over the from-scratch baseline.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <span class="brand">Transfer Learning on CIFAR-10</span>
+    <span class="topnav-links">
+      <a href="#abstract">Abstract</a>
+      <a href="#contributions">Contributions</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="#context">Context</a>
+      <a href="#next">Next</a>
+      <a href="#cite">Cite</a>
+    </span>
+    <span class="topnav-cta">
+      <a class="pill" href="main.pdf">Paper (PDF)</a>
+      <a class="pill pill-primary" href="https://github.com/Vizuara-AI-Lab/paper-transfer-learning-cifar10-pretrained-backbones">Code</a>
+    </span>
+  </div>
+</nav>
+
+<main>
+
+  <section class="hero" style="border-top: none;">
+    <span class="eyebrow">Image classification · Transfer learning · CIFAR-10</span>
+    <h1>ImageNet transfer learning closes 13.6 points of CIFAR-10 accuracy in a 20-epoch budget.</h1>
+    <p class="lede">Across three random seeds per model under a single matched protocol, ResNet-18 reaches 91.5 ± 0.3% test accuracy on CIFAR-10, while a small from-scratch CNN reaches only 77.9 ± 0.7%. MobileNetV2 follows at 89.8 ± 0.4% with substantially fewer parameters, offering the best accuracy-efficiency trade-off.</p>
+
+    <dl class="metadata-grid">
+      <div><dt>Author</dt><dd>Vikash Chandra Mishra</dd></div>
+      <div><dt>Primary metric</dt><dd>Test accuracy</dd></div>
+      <div><dt>Best result</dt><dd>91.5 ± 0.3%</dd></div>
+      <div><dt>Seeds</dt><dd>3 per model</dd></div>
+      <div><dt>Backbones</dt><dd>VGG-16 · MobileNetV2 · ResNet-18</dd></div>
+      <div><dt>Dataset</dt><dd>CIFAR-10 (10 classes)</dd></div>
+      <div><dt>Train / Val / Test</dt><dd>45,000 / 5,000 / 10,000</dd></div>
+      <div><dt>Resolution</dt><dd>32×32 → 224×224</dd></div>
+      <div><dt>License</dt><dd>MIT</dd></div>
+    </dl>
+  </section>
+
+  <section id="abstract">
+    <h2><span class="section-num">01</span> Abstract</h2>
+    <div class="section-narrow">
+      <p>Training accurate image classifiers from scratch on small datasets such as CIFAR-10 typically demands long schedules and aggressive regularization, and even then often falls short of what large pretrained backbones can deliver out of the box. We study how much of that gap can be closed by simple ImageNet transfer learning under a tight twenty-epoch budget. Concretely, we replace the classifier heads of three standard ImageNet-pretrained backbones, VGG-16, MobileNetV2, and ResNet-18, and fine-tune the last residual block at a lower learning rate while training the head at a higher rate, using AdamW, batch size 128, light augmentation, and early stopping.</p>
+      <p>Across three random seeds per model, ResNet-18 attains <strong>91.5 ± 0.3%</strong> test accuracy on CIFAR-10, an absolute improvement of 13.6 percentage points over a small from-scratch convolutional baseline (77.9 ± 0.7%). MobileNetV2 reaches 89.8 ± 0.4% with substantially fewer parameters, offering the best accuracy-efficiency trade-off, and VGG-16 reaches 88.7 ± 0.5%. Ablations show that unfreezing the final residual block contributes 4.3 points and standard augmentation contributes 2.6 points. The findings provide a clean, reproducible reference point for transfer-learning practice on small image-classification benchmarks.</p>
+    </div>
+  </section>
+
+  <section id="contributions">
+    <h2><span class="section-num">02</span> Contributions</h2>
+    <div class="cards-3">
+      <div class="card">
+        <div class="card-num">01</div>
+        <h3>Controlled comparison of three ImageNet backbones</h3>
+        <p>VGG-16, MobileNetV2, and ResNet-18 are evaluated under a single matched 20-epoch protocol with three seeds each, alongside a small from-scratch CNN baseline.</p>
+      </div>
+      <div class="card">
+        <div class="card-num">02</div>
+        <h3>Quantified contribution of two transfer-learning levers</h3>
+        <p>Holding ResNet-18 fixed, unfreezing the final residual block adds 4.3 percentage points (from 87.2% to 91.5%) and standard augmentation adds 2.6 points (from 88.9% to 91.5%); both are needed for the full configuration.</p>
+      </div>
+      <div class="card">
+        <div class="card-num">03</div>
+        <h3>Accuracy-efficiency operating point</h3>
+        <p>MobileNetV2 trails ResNet-18 by only 1.7 points while using substantially fewer parameters and lower inference cost, making it the more attractive choice when compute or latency is constrained.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="method">
+    <h2><span class="section-num">03</span> How it works</h2>
+    <p class="section-narrow">Each classifier consists of a feature extractor followed by a fresh 10-way linear head. For the three transfer-learning models, the feature extractor is an ImageNet-pretrained backbone with its original 1000-way classifier removed; we attach a randomly initialised 10-way head and fine-tune end-to-end. Early backbone blocks are kept frozen, while the final residual block (or its analogue in VGG-16 and MobileNetV2) and the new head are trained.</p>
+
+    <figure class="wide-figure">
+      <img src="figures/fig-architecture.png" alt="Architecture diagram showing frozen backbone blocks B1–B3, fine-tuned final block B4, global average pool, and a new 10-way classifier head with separate learning rates.">
+      <figcaption>Figure 1 — Transfer-learning architecture: frozen backbone blocks at lr=0, fine-tuned final residual block at lr=3e-5, new 10-way classifier head at lr=3e-4.</figcaption>
+    </figure>
+
+    <div class="cards-3">
+      <div class="card">
+        <div class="card-num">01</div>
+        <h3>Two-rate fine-tuning</h3>
+        <p>Classifier head: lr = 3e-4. Unfrozen final residual block: lr = 3e-5. Remaining backbone parameters frozen, no gradient memory.</p>
+      </div>
+      <div class="card">
+        <div class="card-num">02</div>
+        <h3>Light augmentation</h3>
+        <p>Random crop with padding 4, horizontal flip, color jitter, per-channel normalisation. Resize-only at evaluation.</p>
+      </div>
+      <div class="card">
+        <div class="card-num">03</div>
+        <h3>Tight 20-epoch budget</h3>
+        <p>AdamW, batch size 128, max 20 epochs, early stopping on validation accuracy with patience 5. Three seeds per model.</p>
+      </div>
+    </div>
+
+    <figure class="wide-figure">
+      <img src="figures/fig-pipeline.png" alt="Training pipeline flowchart from CIFAR-10 dataset split through augmentation, resize, model + AdamW, and early stopping.">
+      <figcaption>Figure 2 — End-to-end training pipeline.</figcaption>
+    </figure>
+  </section>
+
+  <section id="results">
+    <h2><span class="section-num">04</span> What we found</h2>
+
+    <div class="big-metric">
+      <div class="metric-value">91.5%</div>
+      <div class="metric-label">ResNet-18 test accuracy &nbsp;·&nbsp; +13.6 pts vs. from-scratch CNN</div>
+    </div>
+
+    <p style="margin-top: 1.6rem;">Across three seeds per model, ImageNet-pretrained transfer learning substantially outperforms training from scratch, and the ranking is stable across both top-1 accuracy and macro F1.</p>
+
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Val. Acc. (%)</th>
+          <th>Test Acc. (%)</th>
+          <th>Macro F1</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Small CNN (from scratch)</td><td>78.4 ± 0.6</td><td>77.9 ± 0.7</td><td>0.779</td></tr>
+        <tr><td>VGG-16 (transfer)</td><td>89.1 ± 0.4</td><td>88.7 ± 0.5</td><td>0.887</td></tr>
+        <tr><td>MobileNetV2 (transfer)</td><td>90.3 ± 0.3</td><td>89.8 ± 0.4</td><td>0.898</td></tr>
+        <tr class="best"><td>ResNet-18 (transfer)</td><td>92.0 ± 0.2</td><td>91.5 ± 0.3</td><td>0.915</td></tr>
+      </tbody>
+    </table>
+
+    <figure class="wide-figure">
+      <img src="figures/fig-main-results.png" alt="Vertical bar chart of CIFAR-10 test accuracy by model: 77.9, 88.7, 89.8, 91.5.">
+      <figcaption>Figure 3 — Test accuracy across the four classifiers (mean ± std over three seeds).</figcaption>
+    </figure>
+
+    <p>Two ablations on ResNet-18 isolate the levers: unfreezing the last residual block lifts test accuracy from 87.2% to 91.5%, and standard data augmentation lifts it from 88.9% to 91.5%. Both are needed to reach the default 91.5%.</p>
+
+    <figure class="wide-figure">
+      <img src="figures/fig-ablation.png" alt="Horizontal grouped bar chart showing Frozen backbone 87.2%, Unfreeze last block 91.5%, No augmentation 88.9%, With augmentation 91.5%.">
+      <figcaption>Figure 4 — ResNet-18 ablations: fine-tuning depth (+4.3 pts) and augmentation (+2.6 pts).</figcaption>
+    </figure>
+
+    <p>Training dynamics differ sharply between the two regimes. The pretrained models exceed 85% validation accuracy within five epochs and ResNet-18 peaks near epoch 14 at 92.0%, while the from-scratch CNN converges far more slowly and has not stabilised within the same 20-epoch budget.</p>
+
+    <figure class="wide-figure">
+      <img src="figures/fig-learning-curves.png" alt="Line plot of validation accuracy vs. epoch for the four models, with a star marking ResNet-18's peak at epoch 14, value 92.0%.">
+      <figcaption>Figure 5 — Validation accuracy vs. epoch. ResNet-18 peaks near epoch 14 at 92.0%.</figcaption>
+    </figure>
+  </section>
+
+  <section id="context">
+    <h2><span class="section-num">05</span> Context</h2>
+    <div class="section-narrow">
+      <p>The contribution here is not a new architecture or transfer-learning algorithm. The paper sits in a long line of work on convolutional architectures (VGG, ResNet, MobileNetV2) and on transfer learning from ImageNet. What it adds is a single, tightly controlled training protocol so that reported differences in test accuracy reflect the model and not the recipe.</p>
+      <p>Three caveats apply. First, evaluation is restricted to CIFAR-10 with three seeds; standard deviations are tight (≤ 0.7 points) but the absolute sample is small, and the ranking is not claimed to generalise to harder benchmarks such as CIFAR-100 or ImageNet-1k. Second, all backbones are pretrained on ImageNet-1k only; larger or self-supervised pretraining could shift the accuracy ceiling. Third, the augmentation pipeline is intentionally light; stronger regularisers such as MixUp or CutMix could plausibly close part of the residual gap.</p>
+    </div>
+  </section>
+
+  <section id="next">
+    <h2><span class="section-num">06</span> Where to go next</h2>
+    <div class="cta-grid">
+      <a class="cta-card" href="main.pdf">
+        <span class="num">01</span>
+        <h3>Read the paper <span class="arrow">→</span></h3>
+        <p>Full PDF, 7 pages, two-column.</p>
+      </a>
+      <a class="cta-card" href="https://github.com/Vizuara-AI-Lab/paper-transfer-learning-cifar10-pretrained-backbones">
+        <span class="num">02</span>
+        <h3>See the code <span class="arrow">→</span></h3>
+        <p>LaTeX source, figures, references, and session state.</p>
+      </a>
+      <a class="cta-card" href="https://github.com/Vizuara-AI-Lab/paper-transfer-learning-cifar10-pretrained-backbones#how-to-reproduce">
+        <span class="num">03</span>
+        <h3>Reproduce <span class="arrow">→</span></h3>
+        <p>Hyperparameters, splits, augmentation pipeline, and seeds.</p>
+      </a>
+      <a class="cta-card" href="#cite">
+        <span class="num">04</span>
+        <h3>Cite <span class="arrow">→</span></h3>
+        <p>BibTeX entry below, one click to copy.</p>
+      </a>
+    </div>
+  </section>
+
+  <section id="cite">
+    <h2><span class="section-num">07</span> Cite</h2>
+    <div class="cite-block">
+      <button type="button" class="cite-copy-btn" data-target="cite-bibtex" aria-label="Copy BibTeX to clipboard">Copy</button>
+<pre><code id="cite-bibtex">@misc{mishra2026transfer,
+  title  = {Transfer Learning on CIFAR-10: A Controlled Comparison of ImageNet-Pretrained Backbones},
+  author = {Vikash Chandra Mishra},
+  year   = {2026},
+  url    = {https://github.com/Vizuara-AI-Lab/paper-transfer-learning-cifar10-pretrained-backbones}
+}</code></pre>
+    </div>
+    <script>
+      (function () {
+        var btns = document.querySelectorAll('.cite-copy-btn');
+        btns.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-target');
+            var el = document.getElementById(id);
+            if (!el) return;
+            var text = el.innerText;
+            var done = function () {
+              var orig = btn.textContent;
+              btn.classList.add('is-copied');
+              btn.textContent = 'Copied';
+              setTimeout(function () {
+                btn.classList.remove('is-copied');
+                btn.textContent = orig === 'Copied' ? 'Copy' : orig;
+              }, 1500);
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(text).then(done).catch(function () {
+                fallback();
+              });
+            } else {
+              fallback();
+            }
+            function fallback() {
+              try {
+                var range = document.createRange();
+                range.selectNodeContents(el);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                document.execCommand('copy');
+                sel.removeAllRanges();
+                done();
+              } catch (e) {
+                /* no-op */
+              }
+            }
+          });
+        });
+      })();
+    </script>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">Transfer Learning on CIFAR-10</div>
+      <div class="footer-tag">A controlled comparison of ImageNet-pretrained backbones, with matched ablations on fine-tuning depth and standard data augmentation.</div>
+    </div>
+    <div>
+      <h4>Navigate</h4>
+      <ul>
+        <li><a href="#abstract">Abstract</a></li>
+        <li><a href="#method">Method</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#cite">Cite</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>External</h4>
+      <ul>
+        <li><a href="main.pdf">Paper (PDF)</a></li>
+        <li><a href="https://github.com/Vizuara-AI-Lab/paper-transfer-learning-cifar10-pretrained-backbones">GitHub repo</a></li>
+        <li><a href="https://github.com/Vizuara-AI-Lab/paper-transfer-learning-cifar10-pretrained-backbones/blob/main/review.md">Peer review</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-copy">© 2026 Vikash Chandra Mishra. Released under the MIT License. Session id <code>20260430-082840-61ff</code>.</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
