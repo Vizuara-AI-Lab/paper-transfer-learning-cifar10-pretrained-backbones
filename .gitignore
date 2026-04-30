@@ -1,0 +1,31 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+
+# LaTeX intermediates
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.toc
+
+# Audit dirs
+audit/
+visual_audit/
+
+# Student raw transcripts (PII)
+student/transcripts/*.vtt
+student/transcripts/*.m4a
+student/transcripts/*.wav
+
+# Reference paper PDFs and extracts
+ref_papers/
+
+# Helper figure description scratch files
+figures/_desc_*.txt
